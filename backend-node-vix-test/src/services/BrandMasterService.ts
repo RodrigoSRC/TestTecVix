@@ -44,14 +44,14 @@ export class BrandMasterService {
   async listAll(query: unknown, requestingUser: user) {
     const validQuery = querySchema.parse(query);
 
-    // Members cannot see any MSP listing
-    if (requestingUser.role === "member") {
-      return { totalCount: 0, result: [] };
-    }
-
-    // Vituax users see all MSPs
+    // Vituax users (including members) can see all MSPs for filtering purposes
     if (this.isVituaxUser(requestingUser)) {
       return this.brandMasterModel.listAll(validQuery, validQuery.includeDeleted);
+    }
+
+    // MSP members cannot see MSP listing (not needed for them)
+    if (requestingUser.role === "member") {
+      return { totalCount: 0, result: [] };
     }
 
     // MSP Admin/Manager sees only their own company

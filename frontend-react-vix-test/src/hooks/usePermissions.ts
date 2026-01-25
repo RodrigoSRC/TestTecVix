@@ -88,6 +88,20 @@ export const usePermissions = () => {
     return vm.idBrandMaster === userBrandId;
   };
 
+  /**
+   * Check if user can view VM charts (read-only)
+   * Rules:
+   * - Vituax users (including members) can view charts of any VM
+   * - MSP users can only view charts of their own company's VMs
+   */
+  const canViewVMCharts = (vm: VMEntity): boolean => {
+    // Vituax users can view any VM charts
+    if (isVituaxUser) return true;
+
+    // MSP users can only view their own company's VM charts
+    return vm.idBrandMaster === userBrandId;
+  };
+
   // ============================================
   // MSP/BRANDMASTER PERMISSIONS
   // ============================================
@@ -248,6 +262,7 @@ export const usePermissions = () => {
     canCreateVM,
     canControlVM,
     canDeleteVM,
+    canViewVMCharts,
 
     // MSP permissions
     canCreateMSP,
