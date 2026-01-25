@@ -11,6 +11,7 @@ import { useBrandMasterResources } from "../../hooks/useBrandMasterResources";
 import { useEffect, useState } from "react";
 import { useZUserProfile } from "../../stores/useZUserProfile";
 import EditIcon from "@mui/icons-material/Edit";
+import { usePermissions } from "../../hooks/usePermissions";
 
 interface IColaboratorFormProps {
   onSuccess: () => void;
@@ -22,8 +23,11 @@ export const ColaboratorForm = ({ onSuccess }: IColaboratorFormProps) => {
   const { createUserByManager, isVituaxUser, isLoading, updateUserById } = useUserResources();
   const { listAllBrands } = useBrandMasterResources();
   const { idBrand } = useZUserProfile();
+  const { canCreateEmployee } = usePermissions();
   const [companies, setCompanies] = useState<{ label: string; value: number | null }[]>([]);
   const [showError, setShowError] = useState(false);
+
+  const canCreate = canCreateEmployee();
 
   const {
     idUser,
@@ -176,6 +180,11 @@ export const ColaboratorForm = ({ onSuccess }: IColaboratorFormProps) => {
       setIdBrandMaster(null);
     }
   };
+
+  // Members cannot create employees - hide form unless in edit mode (editing self)
+  if (!canCreate && !isEditingMode) {
+    return null;
+  }
 
   return (
     <Stack

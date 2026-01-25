@@ -50,8 +50,14 @@ export class UserController {
     return res.status(STATUS_CODE.OK).json(result);
   }
 
-  async listAll(req: CustomRequest<unknown>, res: Response) {
-    const result = await this.userService.listAll(req.query);
+  async listAll(req: CustomRequest<ILoggedUser>, res: Response) {
+    const requestingUser = req.user;
+    if (!requestingUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    const result = await this.userService.listAll(req.query, requestingUser);
     return res.status(STATUS_CODE.OK).json(result);
   }
 

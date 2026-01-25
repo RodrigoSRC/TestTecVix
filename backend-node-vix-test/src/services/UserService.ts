@@ -208,10 +208,15 @@ export class UserService {
     return userWithoutPassword;
   }
 
-  async listAll(query: unknown) {
-    return this.userModel.listAll(
-      query as { page?: number; limit?: number; search?: string },
-    );
+  async listAll(query: unknown, requestingUser: ILoggedUser) {
+    const parsedQuery = query as { page?: number; limit?: number; search?: string; idBrandMaster?: number | string };
+    
+    // Se o usuário não é Vituax (tem idBrandMaster), filtra apenas funcionários da mesma empresa
+    if (requestingUser.idBrandMaster !== null) {
+      parsedQuery.idBrandMaster = requestingUser.idBrandMaster;
+    }
+    
+    return this.userModel.listAll(parsedQuery);
   }
 
   async update(idUser: string, data: unknown, requestingUser: ILoggedUser) {
