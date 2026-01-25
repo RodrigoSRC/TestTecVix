@@ -56,9 +56,11 @@ export const VmCard = ({
 }: IVmCardProps) => {
   const { mode, theme } = useZTheme();
   const { t } = useTranslation();
-  const { canControlVM } = usePermissions();
+  const { canControlVM, canViewVMCharts } = usePermissions();
   // Check if user can control this specific VM based on their company
   const canControl = canControlVM({ idBrandMaster });
+  // Check if user can view charts (read-only access)
+  const canViewCharts = canViewVMCharts({ idBrandMaster });
   const [vmNameState, setVmNameState] = useState<string | number>(vmName);
   const [cpuState, setCpuState] = useState<number | string>(cpu);
   const [memoryState, setMemoryState] = useState<number | string>(memory);
@@ -527,13 +529,13 @@ export const VmCard = ({
         >
           {/* Chart */}
           <Tooltip
-            title={!canControl ? t("permissions.cannotControlVM") : ""}
+            title={!canViewCharts ? t("permissions.cannotViewCharts") : ""}
             placement="top"
           >
             <span style={{ width: "100%" }}>
               <Btn
                 disabled={
-                  !canControl ||
+                  !canViewCharts ||
                   !checkStatus(statusState, taskState?.action, taskState?.task)
                     .isRunning
                 }
@@ -546,7 +548,7 @@ export const VmCard = ({
                 sx={{
                   width: "100%",
                   border: "1px solid",
-                  borderColor: canControl ? theme[mode].blueDark : theme[mode].gray,
+                  borderColor: canViewCharts ? theme[mode].blueDark : theme[mode].gray,
                   borderRadius: "8px",
                   display: "flex",
                   flexDirection: "row",
@@ -555,10 +557,10 @@ export const VmCard = ({
                   },
                 }}
               >
-                <ChartBarIcon fill={canControl ? theme[mode].blueDark : theme[mode].gray} />
+                <ChartBarIcon fill={canViewCharts ? theme[mode].blueDark : theme[mode].gray} />
                 <TextRob14Font1Xs
                   sx={{
-                    color: canControl ? theme[mode].blueDark : theme[mode].gray,
+                    color: canViewCharts ? theme[mode].blueDark : theme[mode].gray,
                     fontSize: "12px",
                     fontWeight: "500",
                     lineHeight: "16px",

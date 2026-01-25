@@ -1,5 +1,6 @@
 {
   "cannotControlVM": "No tienes permiso para controlar esta máquina virtual",
+  "cannotViewCharts": "No tienes permiso para ver los gráficos de esta máquina virtual",
   "cannotDeleteVM": "No tienes permiso para eliminar esta máquina virtual",
   "cannotCreateMSP": "No tienes permiso para crear MSPs",
   "cannotEditMSP": "No tienes permiso para editar este MSP",

@@ -53,16 +53,17 @@ export class VMService {
     // Determine idBrandMaster filter based on user and request
     // If showAll=true (used in Home), show all VMs regardless of company
     // Otherwise, filter by user's company (for MyVMs page)
-    let idBrandMaster: number | undefined;
+    let idBrandMaster: number | null | undefined;
 
     const showAll = validQuery.showAll === true;
 
     if (!showAll && user.idBrandMaster !== null) {
       // MSP user without showAll - force filter by their company
       idBrandMaster = user.idBrandMaster;
-    } else if (validQuery.idBrandMaster != null) {
+    } else if (validQuery.idBrandMaster !== undefined) {
       // Explicit filter requested (by Vituax or with showAll)
-      idBrandMaster = Number(validQuery.idBrandMaster);
+      // validQuery.idBrandMaster is already transformed: "null" -> null, "1" -> 1
+      idBrandMaster = validQuery.idBrandMaster as number | null;
     }
 
     return this.vMModel.listAll({

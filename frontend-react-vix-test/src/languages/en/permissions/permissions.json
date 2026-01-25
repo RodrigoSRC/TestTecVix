@@ -1,5 +1,6 @@
 {
   "cannotControlVM": "You do not have permission to control this virtual machine",
+  "cannotViewCharts": "You do not have permission to view charts of this virtual machine",
   "cannotDeleteVM": "You do not have permission to delete this virtual machine",
   "cannotCreateMSP": "You do not have permission to create MSPs",
   "cannotEditMSP": "You do not have permission to edit this MSP",
