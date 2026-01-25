@@ -27,7 +27,7 @@ export const ListItemSidebar = () => {
   const { goLogout } = useLogin();
   const { pathname } = useLocation();
   const { manual, termsOfUse, privacyPolicy } = useZBrandInfo();
-  const { canAccessCreateVM, canAccessMSPPage, canAccessEmployeeRegister, getMSPPagePath } = usePermissions();
+  const { canAccessCreateVM, canAccessMSPPage, canAccessEmployeeRegister, getMSPPagePath, isVituaxUser } = usePermissions();
   const lan = t("costsAndFinances.lan") === "pt" ? "pt" : "eng";
   const baseUrl = import.meta.env.VITE_BASE_URL || "http://localhost:3001";
   const manualUrl = `${baseUrl}/api/v1/uploads/dark-user-manual-vituax-${lan}.pdf`;
@@ -98,7 +98,7 @@ export const ListItemSidebar = () => {
           selected={selected}
           listItems={[
             {
-              text: t("sidebar.mspRegister"),
+              text: isVituaxUser ? t("sidebar.mspRegister") : t("sidebar.myCompany"),
               path: mspPath,
               isSelected: pathname.startsWith("/msp-register"),
               icon: (props) => <UserCheckDone {...props} />,

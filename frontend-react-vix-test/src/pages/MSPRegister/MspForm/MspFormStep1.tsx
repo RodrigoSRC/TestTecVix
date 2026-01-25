@@ -6,6 +6,7 @@ import { InputLabelTooltip } from "../../../components/Inputs/InputLabelTooltip"
 import { TextRob16Font1S } from "../../../components/Text1S";
 import { CheckboxLabel } from "../../../components/CheckboxLabel";
 import { useViaCep } from "../../../hooks/useViaCep";
+import { usePermissions } from "../../../hooks/usePermissions";
 
 interface IMspFormStep1Props {
   onContinue: () => void;
@@ -15,6 +16,7 @@ interface IMspFormStep1Props {
 export const MspFormStep1 = ({ onContinue, onCancel }: IMspFormStep1Props) => {
   const { theme, mode } = useZTheme();
   const { t } = useTranslation();
+  const { isVituaxUser } = usePermissions();
   const {
     companyName,
     setCompanyName,
@@ -442,22 +444,25 @@ export const MspFormStep1 = ({ onContinue, onCancel }: IMspFormStep1Props) => {
         >
           {t("mspRegister.continue")}
         </Button>
-        <Button
-          onClick={onCancel}
-          sx={{
-            background: theme[mode].tertiary,
-            color: theme[mode].primary,
-            textTransform: "none",
-            borderRadius: "12px",
-            padding: "12px 32px",
-            fontWeight: 500,
-            "&:hover": {
-              background: theme[mode].grayLight,
-            },
-          }}
-        >
-          {t("mspRegister.cancel")}
-        </Button>
+        {/* Botão Cancelar só aparece para usuários Vituax */}
+        {isVituaxUser && (
+          <Button
+            onClick={onCancel}
+            sx={{
+              background: theme[mode].tertiary,
+              color: theme[mode].primary,
+              textTransform: "none",
+              borderRadius: "12px",
+              padding: "12px 32px",
+              fontWeight: 500,
+              "&:hover": {
+                background: theme[mode].grayLight,
+              },
+            }}
+          >
+            {t("mspRegister.cancel")}
+          </Button>
+        )}
       </Box>
 
       {/* Mensagem de erro */}
