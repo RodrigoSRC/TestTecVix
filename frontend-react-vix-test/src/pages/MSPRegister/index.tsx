@@ -1,4 +1,4 @@
-import { Box, Button, Modal, Stack, Tooltip } from "@mui/material";
+import { Box, Button, CircularProgress, Modal, Stack, Tooltip } from "@mui/material";
 import { ScreenFullPage } from "../../components/ScreenFullPage";
 import { TextRob20Font1MB } from "../../components/Text1MB";
 import { useZTheme } from "../../stores/useZTheme";
@@ -10,7 +10,7 @@ import { MspTableFilters } from "./MspTable/MspTableFilter";
 import { MspTable } from "./MspTable/MspTable";
 import { MspModal } from "./MspModal";
 import { ModalDeleteMsp } from "./ModalDeleteMsp";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { ModalDeleteVMsFromMSP } from "./ModalDeleteVMsFromMSP";
 import { useBrandMasterResources } from "../../hooks/useBrandMasterResources";
 import { AbsoluteBackDrop } from "../../components/AbsoluteBackDrop";
@@ -20,11 +20,13 @@ import { toast } from "react-toastify";
 import AddIcon from "@mui/icons-material/Add";
 import { useUploadFile } from "../../hooks/useUploadFile";
 import { usePermissions } from "../../hooks/usePermissions";
+import { useZUserProfile } from "../../stores/useZUserProfile";
 
 export const MSPRegisterPage = () => {
   const { theme, mode } = useZTheme();
   const { t } = useTranslation();
-  const { canCreateMSP } = usePermissions();
+  const { canCreateMSP, isVituaxUser } = usePermissions();
+  const { idBrand } = useZUserProfile();
   const {
     activeStep,
     modalOpen,
@@ -72,16 +74,38 @@ export const MSPRegisterPage = () => {
     setBrandLogoFile,
     setBrandLogoPreview,
     setBrandLogo,
+    // Setters for edit mode
+    setCompanyName,
+    setCnpj,
+    setPhone,
+    setSector,
+    setContactEmail,
+    setCep,
+    setLocality,
+    setCountryState,
+    setCity,
+    setStreet,
+    setStreetNumber,
+    setDistrict,
+    setMSPDomain,
+    setIsPoc,
+    setMinConsumption,
+    setDiscountPercentage,
+    setShowAddressFields,
+    setEnterOnEditing,
   } = useZMspRegisterPage();
   const {
     isLoading,
     createAnewBrandMaster,
     editBrandMaster,
     listAllBrands,
+    getBrandMasterById,
   } = useBrandMasterResources();
   const { isLoadingDeleteVM, deleteVM } = useVmResource();
   const { handleUpload } = useUploadFile();
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingOwnMsp, setIsLoadingOwnMsp] = useState(false);
+  const hasLoadedOwnMsp = useRef(false);
 
   const isEditingMode = isEditing.length > 0;
 
@@ -246,7 +270,103 @@ export const MSPRegisterPage = () => {
     }
   }, [isEditing, setShowForm]);
 
+  // Para usuários MSP (não-Vituax), carrega automaticamente os dados da própria MSP
+  useEffect(() => {
+    const loadOwnMsp = async () => {
+      if (!isVituaxUser && idBrand && !hasLoadedOwnMsp.current) {
+        hasLoadedOwnMsp.current = true;
+        setIsLoadingOwnMsp(true);
+        try {
+          const response = await getBrandMasterById(idBrand);
+          const msp = response?.brandMaster;
+          
+          if (msp) {
+            // Popula os campos do formulário (usando mesmos nomes que MspTable.handleEdit)
+            setCompanyName(msp.brandName || "");
+            setCnpj(msp.cnpj || "");
+            setPhone(msp.smsContact || "");
+            setSector(msp.setorName || "");
+            setContactEmail(msp.emailContact || "");
+            setCep(msp.cep || "");
+            setLocality(msp.location || "");
+            setCountryState(msp.state || "");
+            setCity(msp.city || "");
+            setStreet(msp.street || "");
+            setStreetNumber(msp.placeNumber || "");
+            setDistrict(msp.district || "");
+            setMSPDomain(msp.domain || "");
+            setIsPoc(Boolean(msp.isPoc));
+            setMinConsumption(msp.minConsumption ? `${msp.minConsumption}` : "");
+            setDiscountPercentage(msp.discountPercentage ? `${msp.discountPercentage}` : "");
+            setBrandLogo({
+              brandLogoUrl: msp.brandLogo || "",
+              brandObjectName: msp.brandLogo || "",
+            });
+            // Se tem endereço, mostra os campos
+            if (msp.cep || msp.street) {
+              setShowAddressFields(true);
+            }
+            // Entra em modo de edição
+            setIsEditing([idBrand]);
+            setEnterOnEditing(true);
+            setShowForm(true);
+          }
+        } catch (error) {
+          console.error("Erro ao carregar MSP:", error);
+        } finally {
+          setIsLoadingOwnMsp(false);
+        }
+      }
+    };
+    loadOwnMsp();
+  }, [
+    isVituaxUser,
+    idBrand,
+    getBrandMasterById,
+    setCompanyName,
+    setCnpj,
+    setPhone,
+    setSector,
+    setContactEmail,
+    setCep,
+    setLocality,
+    setCountryState,
+    setCity,
+    setStreet,
+    setStreetNumber,
+    setDistrict,
+    setMSPDomain,
+    setIsPoc,
+    setMinConsumption,
+    setDiscountPercentage,
+    setBrandLogo,
+    setShowAddressFields,
+    setIsEditing,
+    setEnterOnEditing,
+    setShowForm,
+  ]);
+
   const renderContent = () => {
+    // Loading quando usuário MSP está carregando sua própria MSP
+    if (isLoadingOwnMsp) {
+      return (
+        <Stack
+          sx={{
+            background: theme[mode].mainBackground,
+            borderRadius: "16px",
+            width: "100%",
+            padding: "24px",
+            boxSizing: "border-box",
+            minHeight: "300px",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CircularProgress />
+        </Stack>
+      );
+    }
+
     if (showForm) {
       // Mostrar formulário
       if (activeStep === 0) {
@@ -353,7 +473,9 @@ export const MSPRegisterPage = () => {
             lineHeight: "40px",
           }}
         >
-          {t("mspRegister.title")}
+          {!isVituaxUser
+            ? t("mspRegister.myCompanyTitle")
+            : t("mspRegister.title")}
         </TextRob20Font1MB>
       }
       sxTitleSubTitle={{
