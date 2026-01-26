@@ -185,8 +185,7 @@ export const MspTable = () => {
                 // Estilo para MSPs deletados
                 ...(msp.deletedAt && {
                   opacity: 0.6,
-                  backgroundColor:
-                    theme[mode].dangerLight || "rgba(244, 67, 54, 0.08)",
+                  backgroundColor: "rgba(244, 67, 54, 0.08)",
                   borderRadius: "8px",
                 }),
               }}
