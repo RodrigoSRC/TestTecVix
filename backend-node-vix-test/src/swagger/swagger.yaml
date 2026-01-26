@@ -4,13 +4,1256 @@ info:
   version: 1.0.0
   contact: {}
 servers:
-  - url: "{{url}}"
+  - url: http://localhost:3001/api/v1
+
+tags:
+  - name: Auth
+    description: Authentication endpoints
+  - name: Users
+    description: User management endpoints
+  - name: BrandMaster
+    description: Brand/MSP management
+  - name: VM
+    description: Virtual Machine management
+  - name: Uploads
+    description: File upload and management
+
 paths:
+  # ==================== AUTH ====================
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: User login
+      description: Authenticate user and return JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@vituax.com
+                password:
+                  type: string
+                  example: Admin@123
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: JWT token
+                  user:
+                    $ref: "#/components/schemas/UserResponse"
+        "401":
+          description: Invalid credentials
+
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register new user
+      description: Create a new user account (role will be member by default)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: MyPass@123
+                idBrandMaster:
+                  type: integer
+                  nullable: true
+                  example: null
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Email already exists
+
+  /auth/refresh:
+    post:
+      tags:
+        - Auth
+      summary: Refresh token
+      description: Get a new JWT token using the current valid token
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: New token generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: New JWT token
+        "401":
+          description: Unauthorized - Invalid or expired token
+
+  # ==================== USERS ====================
+  /users:
+    get:
+      tags:
+        - Users
+      summary: List all users
+      description: Get paginated list of users (requires manager or admin role). MSP users only see users from their company.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by username, email or fullName
+        - name: idBrandMaster
+          in: query
+          schema:
+            type: integer
+          description: Filter by company ID (auto-filtered for MSP users)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedUserResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Requires manager or admin role
+
+    post:
+      tags:
+        - Users
+      summary: Create user
+      description: Create a new user (requires manager or admin role)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreateRequest"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Validation error or email already exists
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Requires manager or admin role
+
+  /users/profile-settings:
+    put:
+      tags:
+        - Users
+      summary: Update profile settings
+      description: Update current user's own profile settings (any authenticated user)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                phone:
+                  type: string
+                  example: "+5527999999999"
+                profileImgUrl:
+                  type: string
+                  nullable: true
+                  example: "http://localhost:3001/api/v1/uploads/profile.jpg"
+                password:
+                  type: string
+                  minLength: 8
+                  description: New password (optional)
+      responses:
+        "200":
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+
+  /users/{idUser}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      description: Get user details by ID (requires authentication)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idUser
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "404":
+          description: User not found
+
+    put:
+      tags:
+        - Users
+      summary: Update user
+      description: Update user data (requires manager or admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idUser
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+      responses:
+        "200":
+          description: User updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "404":
+          description: User not found
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user
+      description: Soft delete user (requires admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idUser
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: User deleted
+        "404":
+          description: User not found
+
+  /users/{idUser}/deactivate:
+    patch:
+      tags:
+        - Users
+      summary: Deactivate user
+      description: Set user isActive to false (requires admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idUser
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "404":
+          description: User not found
+
+  /users/{idUser}/reactivate:
+    patch:
+      tags:
+        - Users
+      summary: Reactivate user
+      description: Set user isActive to true (requires admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idUser
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: User reactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "404":
+          description: User not found
+
+  # ==================== BRAND MASTER ====================
+  /brand-master/self:
+    get:
+      tags:
+        - BrandMaster
+      summary: Get self brand
+      description: Get the brand/MSP information based on the current domain (no authentication required)
+      responses:
+        "200":
+          description: Brand details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandMasterResponse"
+        "404":
+          description: Brand not found for this domain
+
+  /brand-master:
+    get:
+      tags:
+        - BrandMaster
+      summary: List all brands/MSPs
+      description: Get paginated list of brands. Vituax users see all MSPs, MSP admin/manager see only their company.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          description: Skip offset (alternative to page-based pagination)
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by brand name
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            example: "brandName:asc"
+          description: "Sort order. Format: field:direction (e.g., brandName:asc, createdAt:desc)"
+        - name: isActive
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Filter by active status
+        - name: isPoc
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Filter by POC status
+        - name: includeDeleted
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Include soft-deleted records
+      responses:
+        "200":
+          description: List of brands
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBrandMasterResponse"
+        "401":
+          description: Unauthorized
+
+    post:
+      tags:
+        - BrandMaster
+      summary: Create brand/MSP
+      description: Create a new brand/MSP (requires manager or admin role)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandMasterCreateRequest"
+      responses:
+        "201":
+          description: Brand created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandMasterResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Requires manager or admin role
+
+  /brand-master/{idBrandMaster}:
+    get:
+      tags:
+        - BrandMaster
+      summary: Get brand by ID
+      description: Get brand details by ID (requires authentication)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idBrandMaster
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Brand details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandMasterResponse"
+        "404":
+          description: Brand not found
+
+    put:
+      tags:
+        - BrandMaster
+      summary: Update brand
+      description: Update brand data (requires manager or admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idBrandMaster
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandMasterUpdateRequest"
+      responses:
+        "200":
+          description: Brand updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandMasterResponse"
+        "404":
+          description: Brand not found
+
+    delete:
+      tags:
+        - BrandMaster
+      summary: Delete brand
+      description: Soft delete brand (requires admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idBrandMaster
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Brand deleted
+        "404":
+          description: Brand not found
+
+  /brand-master/{idBrandMaster}/reactivate:
+    patch:
+      tags:
+        - BrandMaster
+      summary: Reactivate brand
+      description: Reactivate a soft-deleted brand (requires admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idBrandMaster
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Brand reactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrandMasterResponse"
+        "404":
+          description: Brand not found
+
+  # ==================== VM ====================
+  /vm:
+    get:
+      tags:
+        - VM
+      summary: List all VMs
+      description: Get paginated list of virtual machines. MSP users only see their company's VMs unless showAll is true.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+          description: Items per page
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          description: Skip offset (alternative to page-based pagination)
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by VM name
+        - name: orderBy
+          in: query
+          schema:
+            type: string
+            example: "vmName:asc"
+          description: "Sort order. Format: field:direction (e.g., vmName:asc, createdAt:desc)"
+        - name: isActive
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: Filter by active status
+        - name: idBrandMaster
+          in: query
+          schema:
+            type: integer
+          description: Filter by company ID
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/EVMStatus"
+          description: Filter by VM status
+        - name: showAll
+          in: query
+          schema:
+            type: string
+            enum: ["true", "false"]
+          description: If true, shows all VMs regardless of company (used in Home page)
+      responses:
+        "200":
+          description: List of VMs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedVMResponse"
+        "401":
+          description: Unauthorized
+
+    post:
+      tags:
+        - VM
+      summary: Create VM
+      description: Create a new virtual machine (requires manager or admin role)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VMCreateRequest"
+      responses:
+        "201":
+          description: VM created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VMResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden - Requires manager or admin role
+
+  /vm/{idVM}:
+    get:
+      tags:
+        - VM
+      summary: Get VM by ID
+      description: Get virtual machine details by ID (requires authentication)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idVM
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: VM details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VMResponse"
+        "404":
+          description: VM not found
+
+    put:
+      tags:
+        - VM
+      summary: Update VM
+      description: Update virtual machine data (requires manager or admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idVM
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VMUpdateRequest"
+      responses:
+        "200":
+          description: VM updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VMResponse"
+        "404":
+          description: VM not found
+
+    delete:
+      tags:
+        - VM
+      summary: Delete VM
+      description: Soft delete virtual machine (requires admin role)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: idVM
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: VM deleted
+        "404":
+          description: VM not found
+
+  # ==================== UPLOADS ====================
+  /uploads/file:
+    post:
+      tags:
+        - Uploads
+      summary: Upload file
+      description: Upload a file to the server. Max file size is 50MB. Any file type is accepted.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The file to upload (max 50MB, any type)
+      responses:
+        "200":
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "400":
+          description: No file provided or file too large
+
+  /uploads/{objectName}:
+    get:
+      tags:
+        - Uploads
+      summary: Get file URL
+      description: Get the URL to access an uploaded file
+      parameters:
+        - name: objectName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The object name returned from upload (e.g., 1737850000000-image.png)
+      responses:
+        "200":
+          description: File URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: "http://localhost:3001/api/v1/uploads/1737850000000-image.png/serve"
+        "404":
+          description: File not found
+
+  /uploads/{objectName}/serve:
+    get:
+      tags:
+        - Uploads
+      summary: Serve file
+      description: Directly serve the uploaded file (use in img src, file downloads, etc.)
+      parameters:
+        - name: objectName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The object name returned from upload
+      responses:
+        "200":
+          description: File content
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: File not found
+
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-tags:
-  - name: brandMaster
-  - name: VM
+      bearerFormat: JWT
+
+  schemas:
+    # ==================== ENUMS ====================
+    ERole:
+      type: string
+      enum: [admin, manager, member]
+      description: User role
+
+    EVMStatus:
+      type: string
+      enum: [RUNNING, STOPPED, PAUSED]
+      description: Virtual machine status
+
+    ETaskLocation:
+      type: string
+      enum: [bre_barueri, usa_miami]
+      description: Data center location
+
+    EStorageType:
+      type: string
+      enum: [ssd, hd]
+      description: Storage type
+
+    # ==================== USER SCHEMAS ====================
+    UserResponse:
+      type: object
+      properties:
+        idUser:
+          type: string
+          format: uuid
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        role:
+          $ref: "#/components/schemas/ERole"
+        profileImgUrl:
+          type: string
+          nullable: true
+        idBrandMaster:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+        fullName:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        hiringDate:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    UserCreateRequest:
+      type: object
+      required:
+        - username
+        - email
+        - password
+      properties:
+        username:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        password:
+          type: string
+          minLength: 8
+          example: MyPass@123
+        phone:
+          type: string
+          example: "+5527999999999"
+        role:
+          $ref: "#/components/schemas/ERole"
+        idBrandMaster:
+          type: integer
+          nullable: true
+        fullName:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        hiringDate:
+          type: string
+          format: date
+          nullable: true
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        phone:
+          type: string
+        role:
+          $ref: "#/components/schemas/ERole"
+        isActive:
+          type: boolean
+        idBrandMaster:
+          type: integer
+          nullable: true
+        fullName:
+          type: string
+          nullable: true
+        position:
+          type: string
+          nullable: true
+        department:
+          type: string
+          nullable: true
+        hiringDate:
+          type: string
+          format: date
+          nullable: true
+
+    PaginatedUserResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    # ==================== BRAND MASTER SCHEMAS ====================
+    BrandMasterResponse:
+      type: object
+      properties:
+        idBrandMaster:
+          type: integer
+        brandName:
+          type: string
+        isActive:
+          type: boolean
+        domain:
+          type: string
+          nullable: true
+        cnpj:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        emailContact:
+          type: string
+          nullable: true
+        minConsumption:
+          type: number
+          nullable: true
+        discountPercentage:
+          type: number
+          nullable: true
+        isPoc:
+          type: boolean
+        logoUrl:
+          type: string
+          nullable: true
+        faviconUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    BrandMasterCreateRequest:
+      type: object
+      required:
+        - brandName
+      properties:
+        brandName:
+          type: string
+          example: "Acme Corp"
+        domain:
+          type: string
+          example: "acme.com"
+        cnpj:
+          type: string
+          example: "12.345.678/0001-90"
+        city:
+          type: string
+          example: "São Paulo"
+        state:
+          type: string
+          example: "SP"
+        emailContact:
+          type: string
+          format: email
+          example: "contact@acme.com"
+        minConsumption:
+          type: number
+          example: 1000.00
+        discountPercentage:
+          type: number
+          example: 10.5
+        isPoc:
+          type: boolean
+          example: false
+        logoUrl:
+          type: string
+          nullable: true
+        faviconUrl:
+          type: string
+          nullable: true
+
+    BrandMasterUpdateRequest:
+      type: object
+      properties:
+        brandName:
+          type: string
+        domain:
+          type: string
+        cnpj:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        emailContact:
+          type: string
+          format: email
+        minConsumption:
+          type: number
+        discountPercentage:
+          type: number
+        isPoc:
+          type: boolean
+        isActive:
+          type: boolean
+        logoUrl:
+          type: string
+          nullable: true
+        faviconUrl:
+          type: string
+          nullable: true
+
+    PaginatedBrandMasterResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BrandMasterResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    # ==================== VM SCHEMAS ====================
+    VMResponse:
+      type: object
+      properties:
+        idVM:
+          type: integer
+        vmName:
+          type: string
+        vCPU:
+          type: integer
+        ram:
+          type: integer
+          description: RAM in GB
+        disk:
+          type: integer
+          description: Disk in GB
+        hasBackup:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/EVMStatus"
+        location:
+          $ref: "#/components/schemas/ETaskLocation"
+        storageType:
+          $ref: "#/components/schemas/EStorageType"
+        networkType:
+          type: string
+          nullable: true
+        os:
+          type: string
+          nullable: true
+        idBrandMaster:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VMCreateRequest:
+      type: object
+      required:
+        - vmName
+        - vCPU
+        - ram
+        - disk
+      properties:
+        vmName:
+          type: string
+          example: "web-server-01"
+        vCPU:
+          type: integer
+          example: 4
+        ram:
+          type: integer
+          example: 8
+          description: RAM in GB
+        disk:
+          type: integer
+          example: 100
+          description: Disk in GB
+        hasBackup:
+          type: boolean
+          example: true
+        status:
+          $ref: "#/components/schemas/EVMStatus"
+        location:
+          $ref: "#/components/schemas/ETaskLocation"
+        storageType:
+          $ref: "#/components/schemas/EStorageType"
+        networkType:
+          type: string
+          example: "private"
+        os:
+          type: string
+          example: "Ubuntu 22.04"
+        idBrandMaster:
+          type: integer
+          nullable: true
+
+    VMUpdateRequest:
+      type: object
+      properties:
+        vmName:
+          type: string
+        vCPU:
+          type: integer
+        ram:
+          type: integer
+        disk:
+          type: integer
+        hasBackup:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/EVMStatus"
+        location:
+          $ref: "#/components/schemas/ETaskLocation"
+        storageType:
+          $ref: "#/components/schemas/EStorageType"
+        networkType:
+          type: string
+        os:
+          type: string
+        idBrandMaster:
+          type: integer
+          nullable: true
+        isActive:
+          type: boolean
+
+    PaginatedVMResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/VMResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    # ==================== UPLOAD SCHEMAS ====================
+    UploadResponse:
+      type: object
+      properties:
+        objectName:
+          type: string
+          example: "1737850000000-my-image.png"
+          description: Unique filename to use for later operations
+        url:
+          type: string
+          example: "http://localhost:3001/api/v1/uploads/1737850000000-my-image.png"
+          description: Public URL to access the file

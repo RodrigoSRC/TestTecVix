@@ -1,4 +1,4 @@
-import { Box, Modal, Stack } from "@mui/material";
+import { Box, Button, CircularProgress, Modal, Stack, Tooltip } from "@mui/material";
 import { ScreenFullPage } from "../../components/ScreenFullPage";
 import { TextRob20Font1MB } from "../../components/Text1MB";
 import { useZTheme } from "../../stores/useZTheme";
@@ -10,15 +10,23 @@ import { MspTableFilters } from "./MspTable/MspTableFilter";
 import { MspTable } from "./MspTable/MspTable";
 import { MspModal } from "./MspModal";
 import { ModalDeleteMsp } from "./ModalDeleteMsp";
-import { useEffect, useState } from "react";
-import { ModalUSerNotCreated } from "./ModalUSerNotCreated";
+import { useEffect, useState, useRef } from "react";
 import { ModalDeleteVMsFromMSP } from "./ModalDeleteVMsFromMSP";
 import { useBrandMasterResources } from "../../hooks/useBrandMasterResources";
 import { AbsoluteBackDrop } from "../../components/AbsoluteBackDrop";
 import { useVmResource } from "../../hooks/useVmResource";
+import { MspFormStep1, MspFormStep2 } from "./MspForm";
+import { toast } from "react-toastify";
+import AddIcon from "@mui/icons-material/Add";
+import { useUploadFile } from "../../hooks/useUploadFile";
+import { usePermissions } from "../../hooks/usePermissions";
+import { useZUserProfile } from "../../stores/useZUserProfile";
 
 export const MSPRegisterPage = () => {
   const { theme, mode } = useZTheme();
+  const { t } = useTranslation();
+  const { canCreateMSP, isVituaxUser } = usePermissions();
+  const { idBrand } = useZUserProfile();
   const {
     activeStep,
     modalOpen,
@@ -28,19 +36,83 @@ export const MSPRegisterPage = () => {
     setActiveStep,
     resetAll,
     setIsEditing,
+    isEditing,
     brandMasterDeleted,
     vmsToBeDeleted,
     setBrandMasterDeleted,
     setVmsToBeDeleted,
+    showForm,
+    setShowForm,
+    // Form fields
+    companyName,
+    cnpj,
+    phone,
+    sector,
+    contactEmail,
+    locality,
+    mspDomain,
+    admName,
+    admEmail,
+    admPhone,
+    admPassword,
+    brandLogoUrl,
+    brandObjectName,
+    isPoc,
+    setMspList,
+    minConsumption,
+    discountPercentage,
+    // Address fields
+    cep,
+    street,
+    streetNumber,
+    district,
+    city,
+    countryState,
+    // File upload
+    brandLogoFile,
+    brandLogoPreview,
+    setBrandLogoFile,
+    setBrandLogoPreview,
+    setBrandLogo,
+    // Setters for edit mode
+    setCompanyName,
+    setCnpj,
+    setPhone,
+    setSector,
+    setContactEmail,
+    setCep,
+    setLocality,
+    setCountryState,
+    setCity,
+    setStreet,
+    setStreetNumber,
+    setDistrict,
+    setMSPDomain,
+    setIsPoc,
+    setMinConsumption,
+    setDiscountPercentage,
+    setShowAddressFields,
+    setEnterOnEditing,
   } = useZMspRegisterPage();
-  const { t } = useTranslation();
-  const { isLoading } = useBrandMasterResources();
+  const {
+    isLoading,
+    createAnewBrandMaster,
+    editBrandMaster,
+    listAllBrands,
+    getBrandMasterById,
+  } = useBrandMasterResources();
   const { isLoadingDeleteVM, deleteVM } = useVmResource();
-  const [openModalUserNotCreated, setOpenModalUserNotCreated] = useState(false);
+  const { handleUpload } = useUploadFile();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingOwnMsp, setIsLoadingOwnMsp] = useState(false);
+  const hasLoadedOwnMsp = useRef(false);
+
+  const isEditingMode = isEditing.length > 0;
 
   const resetAllStepStates = () => {
     setIsEditing([]);
     setActiveStep(0);
+    setShowForm(false);
     resetAll();
   };
 
@@ -58,11 +130,337 @@ export const MSPRegisterPage = () => {
     handleCancelAfterDeleteMSP();
   };
 
+  const handleStartCreate = () => {
+    resetAll();
+    setIsEditing([]);
+    setActiveStep(0);
+    setShowForm(true);
+  };
+
+  const handleCancelForm = () => {
+    // Se não quiser perder os dados, apenas esconde o form
+    // Os dados permanecem no state para quando voltar
+    setShowForm(false);
+    setActiveStep(0);
+    setIsEditing([]);
+  };
+
+  const handleContinueToStep2 = () => {
+    setActiveStep(1);
+  };
+
+  const handleBackToStep1 = () => {
+    setActiveStep(0);
+  };
+
+  const handleClearForm = () => {
+    resetAll();
+    setActiveStep(0);
+  };
+
+  const handleConfirmSave = async () => {
+    setIsSaving(true);
+
+    try {
+      // Se há um arquivo de logo para upload, fazer o upload primeiro
+      let finalLogoUrl = brandObjectName || brandLogoUrl;
+      
+      if (brandLogoFile) {
+        const uploadResult = await handleUpload(brandLogoFile);
+        if (uploadResult?.objectName) {
+          finalLogoUrl = uploadResult.objectName;
+          // Atualiza o store com a URL do arquivo enviado
+          setBrandLogo({
+            brandLogoUrl: uploadResult.url || "",
+            brandObjectName: uploadResult.objectName,
+          });
+        }
+      }
+
+      if (isEditingMode) {
+        // MODO EDIÇÃO (sem alterar admin)
+        const editId = isEditing[0];
+        const result = await editBrandMaster(editId, {
+          brandName: companyName,
+          emailContact: contactEmail,
+          cnpj,
+          setorName: sector,
+          location: locality,
+          smsContact: phone,
+          brandLogo: finalLogoUrl,
+          isPoc,
+          minConsumption,
+          discountPercentage,
+          // Campos de endereço
+          cep,
+          street,
+          placeNumber: streetNumber,
+          district,
+          city,
+          state: countryState,
+        });
+
+        if (result?.brandMaster) {
+          // Atualizar lista
+          const updatedList = await listAllBrands();
+          setMspList(updatedList.result);
+          setModalOpen("editedMsp");
+          resetAllStepStates();
+        }
+      } else {
+        // MODO CRIAÇÃO (MSP + Admin em transação)
+        const result = await createAnewBrandMaster({
+          companyName,
+          cnpj,
+          phone,
+          sector,
+          contactEmail,
+          cep,
+          locality,
+          countryState,
+          city,
+          street,
+          streetNumber,
+          district,
+          admName,
+          admEmail,
+          admPhone,
+          admPassword,
+          brandLogo: finalLogoUrl,
+          position: "admin",
+          mspDomain,
+          isPoc,
+          minConsumption: minConsumption ? parseFloat(minConsumption) : 0,
+          discountPercentage: discountPercentage ? parseFloat(discountPercentage) : 0,
+        });
+
+        if (result?.brandMaster) {
+          // Sucesso - MSP e Admin criados em transação
+          const updatedList = await listAllBrands();
+          setMspList(updatedList.result);
+          setModalOpen("createdMsp");
+          resetAllStepStates();
+        }
+      }
+
+      // Limpa o arquivo e preview após salvar com sucesso
+      setBrandLogoFile(null);
+      if (brandLogoPreview) {
+        URL.revokeObjectURL(brandLogoPreview);
+        setBrandLogoPreview("");
+      }
+    } catch {
+      toast.error(t("mspRegister.editMspError"));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     return () => {
       resetAllStepStates();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Quando entra em modo edição, mostrar o form
+  useEffect(() => {
+    if (isEditing.length > 0) {
+      setShowForm(true);
+    }
+  }, [isEditing, setShowForm]);
+
+  // Para usuários MSP (não-Vituax), carrega automaticamente os dados da própria MSP
+  useEffect(() => {
+    const loadOwnMsp = async () => {
+      if (!isVituaxUser && idBrand && !hasLoadedOwnMsp.current) {
+        hasLoadedOwnMsp.current = true;
+        setIsLoadingOwnMsp(true);
+        try {
+          const response = await getBrandMasterById(idBrand);
+          const msp = response?.brandMaster;
+          
+          if (msp) {
+            // Popula os campos do formulário (usando mesmos nomes que MspTable.handleEdit)
+            setCompanyName(msp.brandName || "");
+            setCnpj(msp.cnpj || "");
+            setPhone(msp.smsContact || "");
+            setSector(msp.setorName || "");
+            setContactEmail(msp.emailContact || "");
+            setCep(msp.cep || "");
+            setLocality(msp.location || "");
+            setCountryState(msp.state || "");
+            setCity(msp.city || "");
+            setStreet(msp.street || "");
+            setStreetNumber(msp.placeNumber || "");
+            setDistrict(msp.district || "");
+            setMSPDomain(msp.domain || "");
+            setIsPoc(Boolean(msp.isPoc));
+            setMinConsumption(msp.minConsumption ? `${msp.minConsumption}` : "");
+            setDiscountPercentage(msp.discountPercentage ? `${msp.discountPercentage}` : "");
+            setBrandLogo({
+              brandLogoUrl: msp.brandLogo || "",
+              brandObjectName: msp.brandLogo || "",
+            });
+            // Se tem endereço, mostra os campos
+            if (msp.cep || msp.street) {
+              setShowAddressFields(true);
+            }
+            // Entra em modo de edição
+            setIsEditing([idBrand]);
+            setEnterOnEditing(true);
+            setShowForm(true);
+          }
+        } catch (error) {
+          console.error("Erro ao carregar MSP:", error);
+        } finally {
+          setIsLoadingOwnMsp(false);
+        }
+      }
+    };
+    loadOwnMsp();
+  }, [
+    isVituaxUser,
+    idBrand,
+    getBrandMasterById,
+    setCompanyName,
+    setCnpj,
+    setPhone,
+    setSector,
+    setContactEmail,
+    setCep,
+    setLocality,
+    setCountryState,
+    setCity,
+    setStreet,
+    setStreetNumber,
+    setDistrict,
+    setMSPDomain,
+    setIsPoc,
+    setMinConsumption,
+    setDiscountPercentage,
+    setBrandLogo,
+    setShowAddressFields,
+    setIsEditing,
+    setEnterOnEditing,
+    setShowForm,
+  ]);
+
+  const renderContent = () => {
+    // Loading quando usuário MSP está carregando sua própria MSP
+    if (isLoadingOwnMsp) {
+      return (
+        <Stack
+          sx={{
+            background: theme[mode].mainBackground,
+            borderRadius: "16px",
+            width: "100%",
+            padding: "24px",
+            boxSizing: "border-box",
+            minHeight: "300px",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <CircularProgress />
+        </Stack>
+      );
+    }
+
+    if (showForm) {
+      // Mostrar formulário
+      if (activeStep === 0) {
+        return (
+          <MspFormStep1
+            onContinue={handleContinueToStep2}
+            onCancel={handleCancelForm}
+          />
+        );
+      } else {
+        return (
+          <MspFormStep2
+            onConfirm={handleConfirmSave}
+            onBack={handleBackToStep1}
+            onClear={handleClearForm}
+            isEditing={isEditingMode}
+            isLoading={isSaving}
+          />
+        );
+      }
+    }
+
+    // Mostrar tabela
+    return (
+      <Stack
+        sx={{
+          background: theme[mode].mainBackground,
+          borderRadius: "16px",
+          width: "100%",
+          padding: "24px",
+          boxSizing: "border-box",
+        }}
+      >
+        <Stack
+          sx={{
+            gap: "40px",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "24px",
+            }}
+          >
+            <TextRob16Font1S
+              sx={{
+                color: theme[mode].black,
+                fontSize: "16px",
+                fontWeight: 500,
+                lineHeight: "24px",
+              }}
+            >
+              {t("mspRegister.tableTitle")}
+            </TextRob16Font1S>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                gap: "16px",
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <MspTableFilters />
+              {canCreateMSP() && (
+                <Button
+                  onClick={handleStartCreate}
+                  startIcon={<AddIcon />}
+                  sx={{
+                    background: theme[mode].blue,
+                    color: theme[mode].btnText,
+                    textTransform: "none",
+                    borderRadius: "12px",
+                    padding: "8px 16px",
+                    fontWeight: 500,
+                    whiteSpace: "nowrap",
+                    "&:hover": {
+                      background: theme[mode].blueDark,
+                    },
+                  }}
+                >
+                  {t("mspRegister.createNewMsp")}
+                </Button>
+              )}
+            </Box>
+          </Box>
+          <MspTable />
+        </Stack>
+      </Stack>
+    );
+  };
 
   return (
     <ScreenFullPage
@@ -75,7 +473,9 @@ export const MSPRegisterPage = () => {
             lineHeight: "40px",
           }}
         >
-          {t("mspRegister.title")}
+          {!isVituaxUser
+            ? t("mspRegister.myCompanyTitle")
+            : t("mspRegister.title")}
         </TextRob20Font1MB>
       }
       sxTitleSubTitle={{
@@ -88,32 +488,27 @@ export const MSPRegisterPage = () => {
         paddingBottom: "40px",
       }}
       subtitle={
-        <Box
-          sx={{
-            maxWidth: "646px",
-            "@media (max-width: 660px)": { maxWidth: "136px" },
-          }}
-        >
-          <SampleStepper
-            activeStep={activeStep}
-            stepsNames={[
-              t("mspRegister.stepOneTitle"),
-              t("mspRegister.stepTwoTitle"),
-            ]}
-          />
-        </Box>
+        showForm ? (
+          <Box
+            sx={{
+              maxWidth: "646px",
+              "@media (max-width: 660px)": { maxWidth: "136px" },
+            }}
+          >
+            <SampleStepper
+              activeStep={activeStep}
+              stepsNames={[
+                t("mspRegister.stepOneTitle"),
+                t("mspRegister.stepTwoTitle"),
+              ]}
+            />
+          </Box>
+        ) : undefined
       }
-      //  sx= estilização do componente pai
-      // children= elementos do componente
-      // className= estilização do componente
-      // isLoading= ativa um loaing na tela
-      // title= componente do titulo
-      // subtitle= componente do subtitulo
-      // keepSubtitle = false= mantem o subtitulo no caso de tela mobile ou pequena
-      // sxContainer= estilização do componente children
-      // sxTitleSubTitle= estilização do componente title e subtitle
     >
-      {Boolean(isLoading || isLoadingDeleteVM) && <AbsoluteBackDrop open />}
+      {Boolean(isLoading || isLoadingDeleteVM || isSaving) && (
+        <AbsoluteBackDrop open />
+      )}
       <Stack
         sx={{
           width: "100%",
@@ -122,46 +517,7 @@ export const MSPRegisterPage = () => {
           boxSizing: "border-box",
         }}
       >
-        {
-          <Stack
-            sx={{
-              background: theme[mode].mainBackground,
-              borderRadius: "16px",
-              width: "100%",
-              padding: "24px",
-              boxSizing: "border-box",
-            }}
-          >
-            <Stack
-              sx={{
-                gap: "40px",
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: "24px",
-                }}
-              >
-                <TextRob16Font1S
-                  sx={{
-                    color: theme[mode].black,
-                    fontSize: "16px",
-                    fontWeight: 500,
-                    lineHeight: "24px",
-                  }}
-                >
-                  {t("mspRegister.tableTitle")}
-                </TextRob16Font1S>
-                <MspTableFilters />
-              </Box>
-              <MspTable />
-            </Stack>
-          </Stack>
-        }
+        {renderContent()}
       </Stack>
       {modalOpen !== null && (
         <Modal
@@ -191,15 +547,6 @@ export const MSPRegisterPage = () => {
             )}
           </div>
         </Modal>
-      )}
-      {openModalUserNotCreated && (
-        <ModalUSerNotCreated
-          open={openModalUserNotCreated}
-          onClose={() => {
-            setOpenModalUserNotCreated(false);
-            resetAllStepStates();
-          }}
-        />
       )}
       {Boolean(brandMasterDeleted) && (
         <ModalDeleteVMsFromMSP

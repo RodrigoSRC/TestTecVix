@@ -42,12 +42,22 @@ export const MyVMsPage = () => {
   const { socketRef } = useZGlobalVar();
 
   const handlerFetchVMList = async (page: number = 0) => {
+    // onlyMyVMs (renamed to onlyVituax in UI) = filter by idBrandMaster: null (Vituax VMs)
+    // selectedMSP = filter by specific MSP
+    // Both unchecked/null = show all VMs
+    let idBrandMaster: number | "null" | undefined = selectedMSP?.idBrandMaster ?? undefined;
+    
+    // If "Apenas Vituax" is checked, filter by null (VMs without MSP = Vituax VMs)
+    if (onlyMyVMs) {
+      idBrandMaster = "null";
+    }
+
     const { totalCount, vmList } = await fetchMyVmsList({
       search,
       page: page || currentPage - 1 || 0,
       orderBy: orderBy ? `${orderBy}:${order}` : undefined,
       limit,
-      idBrandMaster: idBrand,
+      idBrandMaster,
       status,
     });
     setVMList(vmList);

@@ -1,0 +1,110 @@
+import { Response } from "express";
+import { CustomRequest } from "../types/custom";
+import { UserService, ILoggedUser } from "../services/UserService";
+import { STATUS_CODE } from "../constants/statusCode";
+
+export class UserController {
+  private userService = new UserService();
+
+  async refreshToken(req: CustomRequest<{ idUser: string }>, res: Response) {
+    const idUser = req.user?.idUser;
+    if (!idUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    const result = await this.userService.refreshToken(idUser);
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+
+  async login(req: CustomRequest<unknown>, res: Response) {
+    const result = await this.userService.login(req.body);
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+
+  async register(req: CustomRequest<unknown>, res: Response) {
+    const result = await this.userService.register(req.body);
+    return res.status(STATUS_CODE.CREATED).json(result);
+  }
+
+  async createByManager(req: CustomRequest<ILoggedUser>, res: Response) {
+    const loggedUser = req.user;
+    if (!loggedUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    const result = await this.userService.createByManager(req.body, loggedUser);
+    return res.status(STATUS_CODE.CREATED).json(result);
+  }
+
+  async getById(req: CustomRequest<ILoggedUser>, res: Response) {
+    const { idUser } = req.params;
+    const requestingUser = req.user;
+    if (!requestingUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    const result = await this.userService.getById(String(idUser), requestingUser);
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+
+  async listAll(req: CustomRequest<ILoggedUser>, res: Response) {
+    const requestingUser = req.user;
+    if (!requestingUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    const result = await this.userService.listAll(req.query, requestingUser);
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+
+  async update(req: CustomRequest<ILoggedUser>, res: Response) {
+    const { idUser } = req.params;
+    const requestingUser = req.user;
+    if (!requestingUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    const result = await this.userService.update(String(idUser), req.body, requestingUser);
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+
+  async delete(req: CustomRequest<ILoggedUser>, res: Response) {
+    const { idUser } = req.params;
+    const requestingUser = req.user;
+    if (!requestingUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    await this.userService.delete(String(idUser), requestingUser);
+    return res.status(STATUS_CODE.NO_CONTENT).send();
+  }
+
+  async deactivate(req: CustomRequest<unknown>, res: Response) {
+    const { idUser } = req.params;
+    const result = await this.userService.deactivate(String(idUser));
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+
+  async reactivate(req: CustomRequest<unknown>, res: Response) {
+    const { idUser } = req.params;
+    const result = await this.userService.reactivate(String(idUser));
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+
+  async updateProfileSettings(req: CustomRequest<{ idUser: string }>, res: Response) {
+    const idUser = req.user?.idUser;
+    if (!idUser) {
+      return res
+        .status(STATUS_CODE.UNAUTHORIZED)
+        .json({ message: "Unauthorized" });
+    }
+    const result = await this.userService.updateProfileSettings(idUser, req.body);
+    return res.status(STATUS_CODE.OK).json(result);
+  }
+}

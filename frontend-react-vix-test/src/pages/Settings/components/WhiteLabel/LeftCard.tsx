@@ -2,6 +2,7 @@ import { Divider, Stack } from "@mui/material";
 import { themeColors, useZTheme } from "../../../../stores/useZTheme";
 import { LeftCardLogo } from "./LeftCardLogo";
 import { LeftCardDomain } from "./LeftCardDomain";
+import { usePermissions } from "../../../../hooks/usePermissions";
 
 interface IWhiteLabelChildProps {
   theme: {
@@ -11,6 +12,8 @@ interface IWhiteLabelChildProps {
 }
 export const LeftCard = ({ theme }: IWhiteLabelChildProps) => {
   const { mode } = useZTheme();
+  const { isVituaxUser, canEditWhiteLabel } = usePermissions();
+  const isAdmin = canEditWhiteLabel();
   return (
     <Stack
       sx={{
@@ -25,9 +28,9 @@ export const LeftCard = ({ theme }: IWhiteLabelChildProps) => {
         "@media (max-width: 1000px)": { width: "100%" },
       }}
     >
-      <LeftCardLogo theme={theme} />
+      <LeftCardLogo theme={theme} isAdmin={isAdmin} isVituaxUser={isVituaxUser} />
       <Divider sx={{ margin: "40px 0", background: theme[mode].grayLight }} />
-      <LeftCardDomain theme={theme} />
+      <LeftCardDomain theme={theme} isAdmin={isAdmin} isVituaxUser={isVituaxUser} />
     </Stack>
   );
 };

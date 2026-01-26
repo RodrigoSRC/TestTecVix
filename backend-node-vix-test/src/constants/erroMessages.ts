@@ -16,4 +16,8 @@ export const ERROR_MESSAGE = {
   INVALID_DATA: "Invalid data",
   USERNAME_ALREADY_EXISTS: "Username already exists",
   EMAIL_ALREADY_EXISTS: "Email already exists",
+  USER_INACTIVE: "User account is inactive",
+  CANNOT_DELETE_LAST_ADMIN: "Cannot delete the last admin of this company",
+  CANNOT_DEMOTE_LAST_ADMIN: "Cannot demote the last admin of this company",
+  CANNOT_CHANGE_USER_COMPANY: "Cannot change user's company after registration",
 };

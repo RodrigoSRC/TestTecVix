@@ -182,6 +182,20 @@
             "null"
           ]
         },
+        "minConsumption": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "default": 0
+        },
+        "discountPercentage": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "default": 0
+        },
         "vM": {
           "type": "array",
           "items": {
@@ -234,6 +248,40 @@
             "STOPPED",
             "PAUSED"
           ]
+        },
+        "pass": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "location": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "bre_barueri",
+            "usa_miami"
+          ]
+        },
+        "storageType": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": "ssd",
+          "enum": [
+            "ssd",
+            "hd"
+          ]
+        },
+        "networkType": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "default": 1
         },
         "createdAt": {
           "type": [
@@ -289,6 +337,12 @@
         "email": {
           "type": "string"
         },
+        "phone": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "profileImgUrl": {
           "type": [
             "string",
@@ -333,6 +387,31 @@
           "format": "date-time"
         },
         "deletedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "fullName": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "position": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "department": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "hiringDate": {
           "type": [
             "string",
             "null"
