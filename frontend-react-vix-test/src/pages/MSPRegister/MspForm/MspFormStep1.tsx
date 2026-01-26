@@ -7,6 +7,7 @@ import { TextRob16Font1S } from "../../../components/Text1S";
 import { CheckboxLabel } from "../../../components/CheckboxLabel";
 import { useViaCep } from "../../../hooks/useViaCep";
 import { usePermissions } from "../../../hooks/usePermissions";
+import { maskPhone } from "../../../utils/maskPhone";
 
 interface IMspFormStep1Props {
   onContinue: () => void;
@@ -196,7 +197,7 @@ export const MspFormStep1 = ({ onContinue, onCancel }: IMspFormStep1Props) => {
       >
         <InputLabelTooltip
           value={phone}
-          onChange={setPhone}
+          onChange={(v) => setPhone(maskPhone(v))}
           label={t("mspRegister.phone")}
           placeholder="(00) 00000-0000"
         />
