@@ -11,6 +11,7 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { useDropzone } from "react-dropzone";
 import { UploadIcon } from "../../../icons/UploadIcon";
+import { maskPhone } from "../../../utils/maskPhone";
 
 interface IMspFormStep2Props {
   onConfirm: () => void;
@@ -247,7 +248,7 @@ export const MspFormStep2 = ({
         >
           <InputLabelTooltip
             value={admPhone}
-            onChange={setAdmPhone}
+            onChange={(v) => setAdmPhone(maskPhone(v))}
             inputName="admPhone"
             autoComplete="tel"
             label={t("mspRegister.adminPhone")}

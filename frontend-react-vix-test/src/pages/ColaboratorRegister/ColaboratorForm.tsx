@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useZUserProfile } from "../../stores/useZUserProfile";
 import EditIcon from "@mui/icons-material/Edit";
 import { usePermissions } from "../../hooks/usePermissions";
+import { maskPhone } from "../../utils/maskPhone";
 
 interface IColaboratorFormProps {
   onSuccess: () => void;
@@ -301,9 +302,9 @@ export const ColaboratorForm = ({ onSuccess }: IColaboratorFormProps) => {
         />
         <InputLabelTooltip
           value={phone}
-          onChange={setPhone}
+          onChange={(v) => setPhone(maskPhone(v))}
           label={t("colaboratorRegister.phone")}
-          placeholder="(00) 0 0000-0000"
+          placeholder="(00) 00000-0000"
         />
       </Box>
 
